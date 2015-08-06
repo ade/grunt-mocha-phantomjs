@@ -11,35 +11,54 @@
 module.exports = function(grunt) {
   var _       = require('lodash'),
       async   = require('async'),
-      path    = require("path"),
-      fs      = require('fs');
+      path    = require('path'),
+      fs      = require('fs'),
+      phantomjsModule = require('phantomjs');
 
   var lookup = function(script, executable) {
-      for (var i = 0; i < module.paths.length; i++) {
-        var absPath = path.join(module.paths[i], script);
-        if (executable && process.platform === 'win32') {
-          absPath += '.cmd';
-        }
-        if (fs.existsSync(absPath)) {
-          return absPath;
-        }
+    for (var i = 0; i < module.paths.length; i++) {
+      var absPath = path.join(module.paths[i], script);
+      if (executable && process.platform === 'win32') {
+        absPath += '.cmd';
       }
-      grunt.fail.warn('Unable to find ' +  script);
-    };
+      if (fs.existsSync(absPath)) {
+        return absPath;
+      }
+    }
+  };
+
+  var findPhantom = function findPhantom() {
+    var path = lookup('phantomjs/bin/phantomjs', true);
+    if(!path) {
+      path = phantomjsModule.path;
+      if (!fs.existsSync(path)) {
+        grunt.fail.warn('Unable to find phantomjs binary.');
+      }
+    }
+    return path;
+  };
+
+  var findMochaPhantomCore = function findMochaPhantomCore() {
+    var path = lookup('mocha-phantomjs-core/mocha-phantomjs-core.js');
+    if(!path) {
+      grunt.fail.warn('Unable to find mocha-phantomjs-core');
+    }
+    return path;
+  };
 
   grunt.registerMultiTask('mocha_phantomjs', 'Run client-side mocha test with phantomjs.', function() {
     // Merge options
     var options          = this.options({
           reporter: 'spec',
           // Non file urls to test
-          urls: [],
+          urls: []
 
         }),
         config           = _.extend({ useColors: true }, options.config),
         files            = this.filesSrc,
         args             = [],
-        phantomPath      = lookup('phantomjs/bin/phantomjs', true),
-        mochaPhantomPath = lookup('mocha-phantomjs-core/mocha-phantomjs-core.js'),
+        phantomPath      = findPhantom(),
+        mochaPhantomPath = findMochaPhantomCore(),
         urls             = options.urls.concat(this.filesSrc),
         done             = this.async(),
         errors           = 0,
